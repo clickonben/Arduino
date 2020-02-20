@@ -1,5 +1,7 @@
-int sequence[100];
+int generatedSequence[100];
+int userSequence[100];
 int sequenceLength;
+int delayLength = 500;
 
 void setup() 
 {
@@ -14,25 +16,25 @@ void setup()
 }
 
 void loop() 
+{   
+  playSequnce();  
+}
+
+void playSequnce()
 {
   if (sequenceLength == 100)
   {
     win();
   }
   int randNumber = (int)random(4,8);
-  sequence[sequenceLength] = randNumber;
-  sequenceLength ++;  
-  playSequnce();  
-}
-
-void playSequnce()
-{
+  generatedSequence[sequenceLength] = randNumber;
+  sequenceLength ++;
   for(int i=0; i <= sequenceLength; i++)
   {
-    digitalWrite(sequence[i], HIGH);
-    delay(200);
-    digitalWrite(sequence[i], LOW);  
-    delay(200);  
+    digitalWrite(generatedSequence[i], HIGH);
+    delay(delayLength);
+    digitalWrite(generatedSequence[i], LOW);  
+    delay(delayLength);  
   }
 }
 
