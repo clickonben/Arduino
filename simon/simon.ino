@@ -1,57 +1,111 @@
-int generatedSequence[100];
+int sequence[100];
 int userSequence[100];
 int sequenceLength;
 int delayLength = 500;
+int ledPinStart = 4;
+int ledPinEnd = 7;
+int buttonPinStart = 8;
+int buttonPinEnd = 11;
 
 void setup() 
 {
   Serial.begin(9600);
   randomSeed(analogRead(0));
   sequenceLength = 0;
-  for(int i = 4; i < 8; i++)
+  for(int i = ledPinStart; i <= ledPinEnd; i++)
   {
-    pinMode(i, OUTPUT);
-    digitalWrite(i, LOW);
+    pinMode(i, OUTPUT);    
+  }
+  for(int i = buttonPinStart; i <= buttonPinEnd; i++)
+  {
+    pinMode(i, INPUT);    
   }
 }
 
 void loop() 
 {   
-  playSequnce();  
+  playSequence();
+  readSequence();
+  delay(delayLength);
 }
 
-void playSequnce()
-{
+void playSequence()
+{  
   if (sequenceLength == 100)
   {
-    win();
+    lose();
   }
-  int randNumber = (int)random(4,8);
-  generatedSequence[sequenceLength] = randNumber;
+  int randNumber = (int)random(ledPinStart,ledPinEnd + 1);
+  sequence[sequenceLength] = randNumber;
   sequenceLength ++;
-  for(int i=0; i <= sequenceLength; i++)
+  Serial.print("Sequence: ");
+  Serial.println(sequenceLength);
+  for(int i=0; i < sequenceLength; i++)
   {
-    digitalWrite(generatedSequence[i], HIGH);
+    digitalWrite(sequence[i], HIGH);
     delay(delayLength);
-    digitalWrite(generatedSequence[i], LOW);  
-    delay(delayLength);  
+    digitalWrite(sequence[i], LOW);  
+    delay(delayLength);
+    Serial.println(sequence[i]);
   }
 }
 
-void win()
+void readSequence()
+{
+  bool failed = false;
+  for (int i = 0; i < sequenceLength && !failed; i++)
+  {    
+    int correctButton = sequence[i] + 4; //Add 4 to the LED output to find the button input;
+    int actualButton = 0;    
+    Serial.print("Correct button: ");
+    Serial.println(correctButton);
+    bool value = false;
+    while(actualButton == 0)
+    { 
+      for (int i = buttonPinStart; i <= buttonPinEnd  && !value; i++)
+      {     
+          value = digitalRead(i);  
+          if (value)
+          {
+            actualButton = i;            
+            while(value)                      
+            { 
+              value = digitalRead(i);             
+              digitalWrite(i-4, value);
+            }          
+          }          
+      }      
+    }
+    Serial.print("Actual button: ");
+    Serial.println(actualButton);
+    failed = (correctButton != actualButton); // If they pressed the wrong button in the sequence        
+  }
+  
+  if(failed)
+  {
+    lose();
+  }
+}
+
+void lose()
 {
   sequenceLength = 0;
-  for(int i=0; i = 5; i++)
+  flashAll(5);
+}
+
+void flashAll(int times)
+{  
+  for(int i=0; i < times; i++)
   {
     digitalWrite(4, HIGH);
     digitalWrite(5, HIGH);
     digitalWrite(6, HIGH);
     digitalWrite(7, HIGH);
-    delay(500);
-    digitalWrite(4, HIGH);
-    digitalWrite(5, HIGH);
-    digitalWrite(6, HIGH);
-    digitalWrite(7, HIGH);
-    delay(500);  
+    delay(delayLength);
+    digitalWrite(4, LOW);
+    digitalWrite(5, LOW);
+    digitalWrite(6, LOW);
+    digitalWrite(7, LOW);
+    delay(delayLength);  
   }
 }
