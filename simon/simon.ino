@@ -1,14 +1,22 @@
 int sequence[100];
 int userSequence[100];
 int sequenceLength;
-int delayLength = 500;
-int ledPinStart = 4;
-int ledPinEnd = 7;
-int buttonPinStart = 8;
-int buttonPinEnd = 11;
+char colourText[7];
+
+const int delayLength = 500;
+const int ledPinStart = 4;
+const int ledPinEnd = 7;
+const int buttonPinStart = 8;
+const int buttonPinEnd = 11;
+const int blueTone = 415;
+const int redTone = 310;
+const int yellowTone = 252;
+const int greenTone = 209;
+const int loseTone = 42;
+const int buzzerPin = 12;
 
 void setup() 
-{
+{  
   Serial.begin(9600);
   randomSeed(analogRead(0));
   sequenceLength = 0;
@@ -43,10 +51,12 @@ void playSequence()
   for(int i=0; i < sequenceLength; i++)
   {
     digitalWrite(sequence[i], HIGH);
+    playTone(sequence[i]-4);    
     delay(delayLength);
     digitalWrite(sequence[i], LOW);  
-    delay(delayLength);
-    Serial.println(sequence[i]);
+    delay(delayLength);      
+    setColourText(colourText, sequence[i] - 4);    
+    Serial.println(colourText);
   }
 }
 
@@ -58,7 +68,8 @@ void readSequence()
     int correctButton = sequence[i] + 4; //Add 4 to the LED output to find the button input;
     int actualButton = 0;    
     Serial.print("Correct button: ");
-    Serial.println(correctButton);
+    setColourText(colourText, correctButton - 8);       
+    Serial.println(colourText);
     bool value = false;
     while(actualButton == 0)
     { 
@@ -67,22 +78,25 @@ void readSequence()
           value = digitalRead(i);  
           if (value)
           {
-            actualButton = i;            
+            actualButton = i;
+            playTone(i-8);            
             while(value)                      
             { 
               value = digitalRead(i);             
               digitalWrite(i-4, value);
-            }          
+            }                      
           }          
       }      
     }
+    delay(delayLength);
     Serial.print("Actual button: ");
-    Serial.println(actualButton);
+    setColourText(colourText, actualButton - 8);    
+    Serial.println(colourText);    
     failed = (correctButton != actualButton); // If they pressed the wrong button in the sequence        
   }
   
   if(failed)
-  {
+  {    
     lose();
   }
 }
@@ -90,6 +104,7 @@ void readSequence()
 void lose()
 {
   sequenceLength = 0;
+  playTone(-1);    
   flashAll(5);
 }
 
@@ -108,4 +123,46 @@ void flashAll(int times)
     digitalWrite(7, LOW);
     delay(delayLength);  
   }
+}
+
+void playTone(int colour)
+{  
+  switch(colour)
+  {
+    case 0:
+    tone(buzzerPin, redTone, delayLength);
+    break;
+    case 1:
+    tone(buzzerPin, greenTone, delayLength);
+    break;
+    case 2:
+    tone(buzzerPin, yellowTone, delayLength);
+    break;
+    case 3:
+    tone(buzzerPin, blueTone, delayLength);
+    break;
+    default:
+    tone(buzzerPin, loseTone, delayLength);    
+  }
+}
+
+void setColourText(char *textToSet, int pin)
+{ 
+  switch(pin)
+  {
+    case 0:
+    strcpy(textToSet, "Red");    
+    break;
+    case 1:
+    strcpy(textToSet, "Green");        
+    break;
+    case 2:
+    strcpy(textToSet, "Yellow");    
+    break;
+    case 3:
+    strcpy(textToSet, "Blue");        
+    break;
+    default:
+    strcpy(textToSet, "Error");        
+  }    
 }
