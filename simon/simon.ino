@@ -12,10 +12,19 @@ const int blueTone = 415;       // The tone in hertz of the LED/button 0 default
 const int loseTone = 42;        // The tone in hertz to play when player makes a mistake
 const int buzzerPin = 12;       // The pin to which the buzzer as attached
 
+// Set dificulty switch pins and difficulty levels
+const int difficultyPin1 = 2;       
+const int difficultyPin2 = 3;
+const int difficultyLevel0 = 8;       
+const int difficultyLevel1 = 16;
+const int difficultyLevel2 = 24;
+const int difficultyLevel3 = 32;
+int difficulty;
+
 // Seed the random number generator and set pins to correct mode. 
 void setup() 
 {  
-  Serial.begin(9600);          // Disable this if you wish to use pin 0 or 1 as normal output pins. This will disable the serial monitor. 
+  Serial.begin(9600);          // Disable this if you wish to use pin 0 or 1 as normal input/output pins. This will disable the serial monitor. 
   randomSeed(analogRead(0));
   sequenceLength = 0;
   for(int i = offSet; i < offSet + 4; i++)
@@ -28,6 +37,10 @@ void setup()
   }
 
   pinMode(buzzerPin, OUTPUT);
+  pinMode(difficultyPin1, INPUT);
+  pinMode(difficultyPin2, INPUT);
+
+  setDifficulty();
 }
 
 void loop() 
@@ -107,16 +120,37 @@ void readSequence()
   }
   
   if(failed)
-  {    
+  {        
     lose();
+  }
+  else if(sequenceLength == difficulty)
+  {
+   
+    win();
   }
 }
 
 void lose()
 {
+  Serial.println("Lose");    
   sequenceLength = 0;
   playTone(-1);    
   flashAll(5);
+}
+
+void win()
+{
+  Serial.println("Win");       
+  sequenceLength = 0;  
+  playTone(0); 
+  delay(delayLength);       
+  playTone(1);    
+  delay(delayLength);    
+  playTone(2);    
+  delay(delayLength);    
+  playTone(3);    
+  delay(delayLength);    
+  flashAll(5);  
 }
 
 void flashAll(int times)
@@ -139,7 +173,7 @@ void flashAll(int times)
 // Plays the relevent tones for each colour, these aproximate the tones and colour mappings of the original 1980s simon toy.
 // If you have wired the LEDS in a different order to red, green, yellow, blue then you might want to edit this accordingly.
 void playTone(int colour)
-{  
+{ 
   switch(colour)
   {
     case 0:
@@ -159,7 +193,41 @@ void playTone(int colour)
   }
 }
 
-// MAps the text to the LED colours for outputting to serial monitor.
+void setDifficulty()
+{
+  int difficulty1 = digitalRead(difficultyPin1);   
+  int difficulty2 = digitalRead(difficultyPin2);
+
+  if(!difficulty1 && !difficulty2)
+  {
+    difficulty = difficultyLevel0;
+  }
+
+  if(difficulty1 && !difficulty2)
+  {
+    difficulty = difficultyLevel1;
+  }
+
+  if(!difficulty1 && difficulty2)
+  {
+    difficulty = difficultyLevel2;
+  }
+
+  if(difficulty1 && difficulty2)
+  {
+    difficulty = difficultyLevel3;
+  }
+
+  //Output debug information
+  Serial.print("Difficulty pin 1: ");
+  Serial.println(difficulty1); 
+  Serial.print("Difficulty ping 2: ");
+  Serial.println(difficulty2); 
+  Serial.print("Difficulty: ");
+  Serial.println(difficulty); 
+}
+
+// Maps the text to the LED colours for outputting to serial monitor.
 // If you have wired the LEDS in a different order to red, green, yellow, blue then you might want to edit this accordingly.
 void setColourText(char *textToSet, int pin)
 { 
