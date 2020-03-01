@@ -4,7 +4,10 @@ int sequenceLength;
 char colourText[7];
 
 const int delayLength = 500;
-const int offSet = 4;
+const int ledPinStart = 4;
+const int ledPinEnd = 7;
+const int buttonPinStart = 8;
+const int buttonPinEnd = 11;
 const int blueTone = 415;
 const int redTone = 310;
 const int yellowTone = 252;
@@ -17,11 +20,11 @@ void setup()
   Serial.begin(9600);
   randomSeed(analogRead(0));
   sequenceLength = 0;
-  for(int i = offSet; i < offSet + 4; i++)
+  for(int i = ledPinStart; i <= ledPinEnd; i++)
   {
     pinMode(i, OUTPUT);    
   }
-  for(int i = offSet + 4; i < offSet + 8; i++)
+  for(int i = buttonPinStart; i <= buttonPinEnd; i++)
   {
     pinMode(i, INPUT);    
   }
@@ -40,19 +43,19 @@ void playSequence()
   {
     lose();
   }
-  int randNumber = (int)random(0, 3);
+  int randNumber = (int)random(ledPinStart,ledPinEnd + 1);
   sequence[sequenceLength] = randNumber;
   sequenceLength ++;
   Serial.print("Sequence: ");
   Serial.println(sequenceLength);
   for(int i=0; i < sequenceLength; i++)
   {
-    digitalWrite(sequence[i] + offSet, HIGH);
-    playTone(sequence[i]);    
+    digitalWrite(sequence[i], HIGH);
+    playTone(sequence[i]-4);    
     delay(delayLength);
-    digitalWrite(sequence[i] + offSet, LOW);  
+    digitalWrite(sequence[i], LOW);  
     delay(delayLength);      
-    setColourText(colourText, sequence[i]);    
+    setColourText(colourText, sequence[i] - 4);    
     Serial.println(colourText);
   }
 }
@@ -60,35 +63,34 @@ void playSequence()
 void readSequence()
 {
   bool failed = false;
-  int buttonOffSet = offSet + 4;
   for (int i = 0; i < sequenceLength && !failed; i++)
   {    
-    int correctButton = sequence[i];
+    int correctButton = sequence[i] + 4; //Add 4 to the LED output to find the button input;
     int actualButton = 0;    
     Serial.print("Correct button: ");
-    setColourText(colourText, correctButton);       
+    setColourText(colourText, correctButton - 8);       
     Serial.println(colourText);
     bool value = false;
     while(actualButton == 0)
     { 
-      for (int i = 0; i < 4 && !value; i++)
+      for (int i = buttonPinStart; i <= buttonPinEnd  && !value; i++)
       {     
-          value = digitalRead(i + buttonOffSet);  
+          value = digitalRead(i);  
           if (value)
           {
             actualButton = i;
-            playTone(actualButton);            
+            playTone(i-8);            
             while(value)                      
             { 
-              value = digitalRead(i + buttonOffSet);             
-              digitalWrite(i + offSet, value);
+              value = digitalRead(i);             
+              digitalWrite(i-4, value);
             }                      
           }          
       }      
     }
     delay(delayLength);
     Serial.print("Actual button: ");
-    setColourText(colourText, actualButton);    
+    setColourText(colourText, actualButton - 8);    
     Serial.println(colourText);    
     failed = (correctButton != actualButton); // If they pressed the wrong button in the sequence        
   }
