@@ -3,65 +3,122 @@ int latchPin = 7;
 int clockPin = 8;
 int dataPin = 6;
 
-byte row[] = { B00001110, B00001101, B00001011, B00000111 };
-byte column[] = { B00010000, B00100000, B01000000, B10000000 };
+byte squares[][4][2] { 
+                     { {B00000000, B01101001 }, 
+                       {B00000000, B01101001 }, 
+                       {B00000000, B01101001 }, 
+                       {B00000000, B01101001 } },
+                     { {B00000000, B11110111 }, 
+                       {B01100000, B10011011 }, 
+                       {B01100000, B10011101 }, 
+                       {B00000000, B11111110 } },
+                     { {B01100000, B00001001 }, 
+                       {B01100000, B00001001 }, 
+                       {B01100000, B00001001 }, 
+                       {B01100000, B00001001 } },
+                     { {B11110000, B00000111 }, 
+                       {B10010000, B00001011 }, 
+                       {B10010000, B00001101 }, 
+                       {B11110000, B00001110 } }, 
+                     { {B00000000, B00001001 }, 
+                       {B00000110, B00001001 }, 
+                       {B00000110, B00001001 }, 
+                       {B00000000, B00001001 } },
+                     { {B00001111, B00000111 }, 
+                       {B00001001, B00001011 }, 
+                       {B00001001, B00001101 }, 
+                       {B00001111, B00001110 } } };
 
- 
+byte lines[][4][2]   {
+                     { {B00000000, B11110000 }, 
+                       {B00000000, B11110000 }, 
+                       {B00000000, B11110000 }, 
+                       {B00000000, B11110000 } },                      
+                     { {B11110000, B00000111 }, 
+                       {B00000000, B11111000 }, 
+                       {B00000000, B11111000 }, 
+                       {B00000000, B11111000 } },
+                     { {B11110000, B00000011 }, 
+                       {B11110000, B00000011 }, 
+                       {B00000000, B11111100 }, 
+                       {B00000000, B11111100 } },
+                     { {B11110000, B00000001 }, 
+                       {B11110000, B00000001 }, 
+                       {B11110000, B00000001 }, 
+                       {B00000000, B11111110 } },
+                     { {B11110000, B00000000 }, 
+                       {B11110000, B00000000 }, 
+                       {B11110000, B00000000 }, 
+                       {B11110000, B00000000 } },
+                     { {B00001111, B00000111 }, 
+                       {B11110000, B00001000 }, 
+                       {B11110000, B00001000 }, 
+                       {B11110000, B00001000 } },
+                     { {B00001111, B00000011 }, 
+                       {B00001111, B00000011 }, 
+                       {B11110000, B00001100 }, 
+                       {B11110000, B00001100 } },
+                     { {B00001111, B00000001 }, 
+                       {B00001111, B00000001 }, 
+                       {B00001111, B00000001 }, 
+                       {B11110000, B00001110 } },
+                     { {B00001111, B00000000 }, 
+                       {B00001111, B00000000 }, 
+                       {B00001111, B00000000 }, 
+                       {B00001111, B00000000 } },                     
+                     { {B00000000, B11110111 }, 
+                       {B00001111, B00001000 }, 
+                       {B00001111, B00001000 }, 
+                       {B00001111, B00001000 } },
+                     { {B00000000, B11110011 }, 
+                       {B00000000, B11110011 }, 
+                       {B00001111, B00001100 }, 
+                       {B00001111, B00001100 } },
+                     { {B00000000, B11110001 }, 
+                       {B00000000, B11110001 }, 
+                       {B00000000, B11110001 }, 
+                       {B00001111, B00001110 } } };
+byte cycle[] { squares, lines };
+
+unsigned long currentMillis;
+unsigned long previousMillis = 0;
+long interval = 100;
+int len;
 
 void setup() 
 {
   pinMode(latchPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
   pinMode(dataPin, OUTPUT);
+  len = sizeof(lines) / sizeof(lines[0]);
 }
 
 void loop() 
-{  
-  byte rowAccumulator = B00001111;
-  for(byte i = 0; i < 4; i++)
-  {  
-    rowAccumulator = rowAccumulator & row[i];
-    byte colAccumulator = 0;   
-    for(byte j =0; j < 4; j++)
-    {
-      colAccumulator = colAccumulator | column[j];           
-      digitalWrite(latchPin, LOW);  
-      shiftOut(dataPin, clockPin, MSBFIRST, colAccumulator );
-      shiftOut(dataPin, clockPin, MSBFIRST, 0 + rowAccumulator );
-      digitalWrite(latchPin, HIGH);
-      delay(200);
-    }
-  }
+{
   
-  rowAccumulator = B00001111;
-  for(byte i = 0; i < 4; i++)
-  {  
-    rowAccumulator = rowAccumulator & row[i];
-    byte colAccumulator = 0;   
-    for(byte j =0; j < 4; j++)
-    {
-      colAccumulator = colAccumulator | column[j];           
-      digitalWrite(latchPin, LOW);  
-      shiftOut(dataPin, clockPin, MSBFIRST, colAccumulator >> 4 );
-      shiftOut(dataPin, clockPin, MSBFIRST, 0 + rowAccumulator );
-      digitalWrite(latchPin, HIGH);
-      delay(200);
-    }
+  for (int i =0; i < len; i++)
+  {
+    while(!intervalPassed())
+    {      
+      for (int j = 0; j < 4; j++)
+      {
+        digitalWrite(latchPin, LOW);  
+        shiftOut(dataPin, clockPin, MSBFIRST, lines[i][j][0] );
+        shiftOut(dataPin, clockPin, MSBFIRST, lines[i][j][1] );
+        digitalWrite(latchPin, HIGH);                     
+      }       
+    }        
   }
+}
 
-  rowAccumulator = B00001111;
-  for(byte i = 0; i < 4; i++)
-  {  
-    rowAccumulator = rowAccumulator & row[i];
-    byte colAccumulator = 0;   
-    for(byte j =0; j < 4; j++)
-    {
-      colAccumulator = colAccumulator | column[j];           
-      digitalWrite(latchPin, LOW);  
-      shiftOut(dataPin, clockPin, MSBFIRST, 0 );
-      shiftOut(dataPin, clockPin, MSBFIRST, colAccumulator + rowAccumulator );
-      digitalWrite(latchPin, HIGH);
-      delay(200);
-    }
-  }
+bool intervalPassed()
+{
+  currentMillis = millis();
+  bool passed = false;
+  if(currentMillis - previousMillis > interval) 
+  {    
+    previousMillis = currentMillis;
+    passed = true;
+  } 
+  return passed;
 }
