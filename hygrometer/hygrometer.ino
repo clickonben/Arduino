@@ -1,11 +1,11 @@
 const int dryTone = 415; 
 const int ledPins[4] = { 2, 3, 4, 5 };
-const int sensorPins[4] { A0, A1, A2, A3 };
+const int sensorPins[4] = { A0, A1, A2, A3 };
 const int inputPin = 6;
 const int buzzerPin = 13;
 const int alarmThreshold = 750;
 const int cycleDelay = 1000;
-const int timeoutDelay = 5000;
+const int timeoutDelay = 100000;
 
 void setup() 
 { 
