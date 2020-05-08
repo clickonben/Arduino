@@ -78,7 +78,7 @@ byte lines[][4][2]   {
                        {B00000000, B11110001 }, 
                        {B00000000, B11110001 }, 
                        {B00001111, B00001110 } } };
-byte cycle[] { squares, lines };
+//byte cycle[] { squares, lines };
 
 unsigned long currentMillis;
 unsigned long previousMillis = 0;
