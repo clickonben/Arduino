@@ -5,36 +5,47 @@ DS3231 rtc;
 bool Century = false;
 bool h12;
 bool PM;
+bool modified = false;
+byte hour;
+byte minute;
+byte DoW;
+
 const bool debug = true;
  
-byte cathodes[][3][4] = { { { B00001000, B00000100, B00000010, B00000001},
-                            { B00001000, B00000100, B00000010, B00000001} },
-                          { { B00001000, B00000100, B00000010, B00000001},
-                            { B00000000, B00000000, B00000010, B00000001} },
-                          { { B00001000, B00000100, B00000010, B00000001},
-                            { B00001000, B00000100, B00000000, B00000000} } };
+byte cathodes[4] = { B00001000, B00000100, B00000010, B00000001};
 
 const byte dataPin = 2;
 const byte clockPin = 3;
 const byte latchPin = 4;
-const byte buttonPin = 5;
+const byte modeButtonPin = 5;
+const byte minusButtonPin = 6;
+const byte plusButtonPin = 7;
+
+const byte dotsShiftPin = 7;
+const byte redLEDShiftPin = 6;
+const byte greenLEDShiftPin = 5;
+const byte blueLEDShiftPin = 4;
+
 
 const byte digits[] = { B11111100, B01100000, B11011010, B11110010, B01100110, B10110110, B10111110, B11100000, B11111110, B11110110 }; 
 
-unsigned long currentMillis;
-unsigned long previousMillis = 0;
-long interval = 1000;
+unsigned long flashPreviousMillis = 0;
+long flashInterval = 1000;
+
+unsigned long adjustPreviousMillis = 0;
+long adjustInterval = 100;
 
 bool dotsState;
 
 enum ClockMode
 {
-  Normal = 0,
-  FlashHours = 1,
-  FlashMinutes= 2
+  DisplayTime,
+  SetTime,
+  SetAlarm,
+  DisplayTimeAlarmSet
 };
 
-ClockMode mode = Normal;
+ClockMode clockMode = DisplayTime;
 
 void setup()
 {
@@ -44,64 +55,162 @@ void setup()
   pinMode(latchPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
   pinMode(dataPin, OUTPUT);
-  pinMode(buttonPin, INPUT);
+  pinMode(modeButtonPin, INPUT);
+  pinMode(minusButtonPin, INPUT);
+  pinMode(plusButtonPin, INPUT);
   
-  //setRTC(20,5,7,4,15,18,true);  
-  
+  //setRTC(20,5,7,4,15,18,true); 
+  //getTime();
+  //setAlarm();
 }
  
 void loop() 
 {  
   for (int currentCathode = 0; currentCathode < 4; currentCathode++)   
   {
-    updateDisplay(currentCathode);
-    if(intervalPassed())
+    if (clockMode == DisplayTime || clockMode == DisplayTimeAlarmSet)
     {
-      dotsState = ! dotsState;
-      bool buttonState = digitalRead(buttonPin);
+      getTime(); 
+    }    
+    updateDisplay(currentCathode);
+    if(intervalPassed(flashInterval, &flashPreviousMillis))
+    {
+      dotsState = !dotsState;
+      
+      bool modeButtonState = digitalRead(modeButtonPin);      
+      if(modeButtonState)
+      {
+        changeClockMode();        
+      }         
       if (debug)
       {         
-        printDebug(buttonState, dotsState);          
-      }              
+        printDebug(dotsState, modeButtonState, currentCathode);          
+      }   
+      if(isAlarm())
+      {
+        soundAlarm();           
+      }
     }
+    if(intervalPassed(adjustInterval, &adjustPreviousMillis))
+    {
+      if(clockMode == SetTime || clockMode == SetAlarm)
+      {
+        adjustClock();
+      }      
+    }  
   }
 }
 
 void updateDisplay(int cathodeID)
 {
-    int cathodeShiftCode = cathodes[dotsState][mode][cathodeID]; 
-    bitWrite(cathodeShiftCode, 7, dotsState);
+    int cathodeShiftCode = addShiftFlags(cathodes[cathodeID]);     
     digitalWrite(latchPin, LOW);
     shiftOut(dataPin, clockPin, MSBFIRST, cathodeShiftCode ); 
     shiftOut(dataPin, clockPin, LSBFIRST, digits[getDigit(cathodeID)]);      
     digitalWrite(latchPin, HIGH);
 }
-void printDebug(bool dotState, bool buttonState)
+void adjustClock()
 {
-  Serial.print(rtc.getYear(), DEC);
-  Serial.print("-");
-  Serial.print(rtc.getMonth(Century), DEC);
-  Serial.print("-");
-  Serial.print(rtc.getDate(), DEC);
-  Serial.print(" ");
-  Serial.print(rtc.getHour(h12, PM), DEC); //24-hr
-  Serial.print(":");
-  Serial.print(rtc.getMinute(), DEC);
-  Serial.print(":");
-  Serial.println(rtc.getSecond(), DEC);
-  Serial.print("Dots: ");
-  Serial.println(dotState ? "On" : "Off"); 
-  Serial.print("Button: ");
-  Serial.println(buttonState ? "Down" : "Up" );
+  bool plusButtonState = digitalRead(plusButtonPin);  
+  if(plusButtonState)
+  {
+    minute++;
+    if(minute >= 60)
+    {
+      minute = 0;
+      hour ++;
+    }
+    if(hour >= 24)
+    {
+      hour = 0;
+    }
+    modified = true;
+  }
+  
+  bool minusButtonState = digitalRead(minusButtonPin); 
+  if(minusButtonState)
+  {
+    minute--;
+    if(minute >= 60)
+    {
+      minute = 59;
+      hour --;
+    }
+    if(hour >= 24)
+    {
+      hour = 23;
+    }
+    modified = true;
+  } 
 }
 
-bool intervalPassed()
+byte addShiftFlags(byte shiftCode)
 {
-  currentMillis = millis();
+  bitWrite(shiftCode, dotsShiftPin, dotsState);
+  switch(clockMode)
+  {
+    case DisplayTime:
+    bitWrite(shiftCode, redLEDShiftPin, 0);
+    bitWrite(shiftCode, blueLEDShiftPin, 0); 
+    bitWrite(shiftCode, greenLEDShiftPin, 0); 
+    break;      
+    case SetAlarm:
+    bitWrite(shiftCode, redLEDShiftPin, 1);
+    bitWrite(shiftCode, blueLEDShiftPin, 0); 
+    bitWrite(shiftCode, greenLEDShiftPin, 0); 
+    break;  
+    case SetTime:
+    bitWrite(shiftCode, redLEDShiftPin, 0);
+    bitWrite(shiftCode, blueLEDShiftPin, 1);
+    bitWrite(shiftCode, greenLEDShiftPin, 0);  
+    break;  
+    case DisplayTimeAlarmSet:
+    bitWrite(shiftCode, redLEDShiftPin, 0);
+    bitWrite(shiftCode, blueLEDShiftPin, 0);  
+    bitWrite(shiftCode, greenLEDShiftPin, 1);    
+  }
+  return shiftCode;
+}
+
+void changeClockMode()
+{
+  switch (clockMode)
+  {
+    case DisplayTime:
+    clockMode = SetTime;
+    break;
+    case SetTime:
+    clockMode = SetAlarm; 
+    if (modified)
+    {
+      setCurrentTime();
+      modified = false;
+    }           
+    getAlarm();
+    break;
+    case SetAlarm:
+    if (modified)
+    {
+      setAlarm();
+      modified = false;
+    }       
+    clockMode = DisplayTimeAlarmSet;
+    enableAlarm();
+    break;
+    case DisplayTimeAlarmSet:
+    clockMode = DisplayTime;
+    disableAlarm();
+    break;
+  }
+}
+
+bool intervalPassed(long interval, unsigned long *previousMillis)
+{
+  long currentMillis = millis();
   bool passed = false;
-  if(currentMillis - previousMillis > interval) 
+  if(currentMillis - *previousMillis > interval) 
   {    
-    previousMillis = currentMillis;
+    *previousMillis = currentMillis;
     passed = true;
   } 
   return passed;
@@ -113,19 +222,92 @@ byte getDigit(byte cathode)
   switch(cathode)
   {
     case 3:
-    digit = (rtc.getHour(h12, PM)/10) % 10;
+    digit = (hour/10) % 10;
     break;  
     case 2:
-    digit = rtc.getHour(h12, PM) % 10;
+    digit = hour % 10;
     break;
     case 1:
-    digit = (rtc.getMinute()/10) % 10;
+    digit = (minute/10) % 10;
     break;
     case 0:
-    digit = rtc.getMinute() % 10;
+    digit = minute % 10;
     break;
   }
   return digit;
+}
+
+void getTime()
+{
+  hour = rtc.getHour(h12, PM);
+  minute = rtc.getMinute();
+  DoW = rtc.getDoW();
+}
+void setCurrentTime()
+{
+  rtc.setHour(hour);
+  rtc.setMinute(minute);
+  rtc.setSecond(0);
+}
+
+void getAlarm()
+{
+  byte aHour, aMinute, discard;  
+  bool bDiscard;
+  rtc.getA1Time(discard, aHour, aMinute, discard, discard, bDiscard, bDiscard, bDiscard);
+  hour = aHour;
+  minute = aMinute;
+}
+
+void setAlarm()
+{  
+  byte alarmDoW; 
+  byte alarmHour = hour;
+  byte alarmMinute = minute;
+  getTime();
+
+  //If alarm time is later than current time set alarm day to today otherwise set it to tomorrow.
+  if (alarmHour > hour || (alarmHour == hour && alarmMinute > minute))
+  {
+    alarmDoW = DoW;
+  }
+  else
+  {
+    alarmDoW = (DoW + 1) < 7 ? DoW + 1 : 0; // Set the alarm DoW to today + 1 (tomorrow) except if today + 1 is not a valid day then set it to 0 (Sunday)
+  }
+  
+  rtc.setA1Time(alarmDoW, alarmHour, alarmMinute, 0, 0, true, false, false);  
+}
+
+void enableAlarm()
+{
+  rtc.turnOnAlarm(1);
+}
+
+void disableAlarm()
+{
+  rtc.turnOffAlarm(1);
+}
+
+bool isAlarm()
+{
+  bool alarm = false;
+  if(rtc.checkAlarmEnabled(1))
+  {
+    byte aDoW, aHour, aMinute, discard;  
+    bool bDiscard;
+    rtc.getA1Time(aDoW, aHour, aMinute, discard, discard, bDiscard, bDiscard, bDiscard);
+    if(DoW == aDoW && aHour == hour && aMinute >= minute && aMinute <= minute +5)
+    {
+      alarm = true;
+    }
+  } 
+  return alarm; 
+}
+
+bool soundAlarm()
+{
+  Serial.println("Alarm!");
 }
 
 void setRTC(byte year, byte month, byte day, byte dow, byte hour, byte minute, bool twentyFourHour)
@@ -163,4 +345,53 @@ void setRTC(byte year, byte month, byte day, byte dow, byte hour, byte minute, b
   
   rtc.setSecond(0);   
   
+}
+
+void printDebug(bool dotState, bool modeButtonState, byte cathodeID)
+{
+  Serial.print(rtc.getYear(), DEC);
+  Serial.print("-");
+  Serial.print(rtc.getMonth(Century), DEC);
+  Serial.print("-");
+  Serial.print(rtc.getDate(), DEC);
+  Serial.print(" ");
+  Serial.print(rtc.getDoW(), DEC);
+  Serial.print(" ");
+  Serial.print(rtc.getHour(h12, PM), DEC); //24-hr
+  Serial.print(":");
+  Serial.print(rtc.getMinute(), DEC);
+  Serial.print(":");
+  Serial.println(rtc.getSecond(), DEC);
+  Serial.print("Dots: ");
+  Serial.println(dotState ? "On" : "Off"); 
+  Serial.print("Mode Button: ");
+  Serial.println(modeButtonState ? "Down" : "Up" );
+  Serial.print("CathodeID: ");
+  Serial.println(cathodeID);
+  Serial.print("Cathode Value: ");
+  Serial.println(cathodes[cathodeID]);
+  Serial.print("Minute: ");
+  Serial.println(minute);  
+  Serial.print("Hour: ");
+  Serial.println(minute); 
+  Serial.print("Clock Mode: ");
+  Serial.println(clockMode);
+  Serial.print("Alarm Enabled: ");
+  Serial.println(rtc.checkAlarmEnabled(1) ? "Yes" : "No");
+  Serial.print("Alarm !: ");
+  Serial.println(isAlarm() ? "Yes" : "No");
+  byte aHour, aMinute, aDoW, discard;  
+  bool bDiscard, is12h, isPM;
+  rtc.getA1Time(aDoW, aHour, aMinute, discard, discard, bDiscard, is12h, isPM);
+  Serial.print("Alarm Time: ");
+  Serial.print(aDoW);
+  Serial.print(":");
+  Serial.print(aHour);
+  Serial.print(":");
+  Serial.print(aMinute); 
+  Serial.println("");
+  Serial.print("Is 12 H: ");
+  Serial.println(is12h ? "Yes" : "No");
+  Serial.print("Is PM: ");
+  Serial.println(isPM ? "Yes" : "No");
 }
