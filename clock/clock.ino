@@ -20,12 +20,17 @@ const byte latchPin = 4;
 const byte modeButtonPin = 5;
 const byte minusButtonPin = 6;
 const byte plusButtonPin = 7;
+const byte buzzerPin = 8; 
 
 const byte dotsShiftPin = 7;
 const byte redLEDShiftPin = 6;
 const byte greenLEDShiftPin = 5;
 const byte blueLEDShiftPin = 4;
 
+const int redTone = 310;        // The tone in hertz of the LED/button 0 default colour red
+const int greenTone = 209;      // The tone in hertz of the LED/button 0 default colour green
+const int yellowTone = 252;     // The tone in hertz of the LED/button 0 default colour yellow
+const int blueTone = 415;       // The tone in hertz of the LED/button 0 default colour blue    
 
 const byte digits[] = { B11111100, B01100000, B11011010, B11110010, B01100110, B10110110, B10111110, B11100000, B11111110, B11110110 }; 
 
@@ -58,6 +63,7 @@ void setup()
   pinMode(modeButtonPin, INPUT);
   pinMode(minusButtonPin, INPUT);
   pinMode(plusButtonPin, INPUT);
+  pinMode(buzzerPin, OUTPUT);
   
   //setRTC(20,5,7,4,15,18,true); 
   //getTime();
@@ -297,7 +303,7 @@ bool isAlarm()
     byte aDoW, aHour, aMinute, discard;  
     bool bDiscard;
     rtc.getA1Time(aDoW, aHour, aMinute, discard, discard, bDiscard, bDiscard, bDiscard);
-    if(DoW == aDoW && aHour == hour && aMinute >= minute && aMinute <= minute +5)
+    if(DoW == aDoW && aHour == hour && aMinute <= minute && aMinute >= minute -5)
     {
       alarm = true;
     }
@@ -307,7 +313,7 @@ bool isAlarm()
 
 bool soundAlarm()
 {
-  Serial.println("Alarm!");
+  tone(buzzerPin, redTone, 500);   
 }
 
 void setRTC(byte year, byte month, byte day, byte dow, byte hour, byte minute, bool twentyFourHour)
