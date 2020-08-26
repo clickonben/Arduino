@@ -1,4 +1,4 @@
-#include <Wire.h>
+  #include <Wire.h>
 #include <DS3231.h>
 
 DS3231 rtc;
@@ -12,7 +12,7 @@ byte DoW;
 
 const bool debug = true;
  
-byte cathodes[4] = { B00001000, B00000100, B00000010, B00000001};
+byte cathodes[4] = { B00010000, B00001000, B00000100, B00000010};
 
 const byte dataPin = 2;
 const byte clockPin = 3;
@@ -22,17 +22,17 @@ const byte minusButtonPin = 6;
 const byte plusButtonPin = 7;
 const byte buzzerPin = 8; 
 
-const byte dotsShiftPin = 7;
-const byte redLEDShiftPin = 6;
-const byte greenLEDShiftPin = 5;
-const byte blueLEDShiftPin = 4;
+const byte dotsShiftPin = 0;
+const byte redLEDShiftPin = 5;
+const byte greenLEDShiftPin = 6;
+const byte blueLEDShiftPin = 7;
 
 const int redTone = 310;        // The tone in hertz of the LED/button 0 default colour red
 const int greenTone = 209;      // The tone in hertz of the LED/button 0 default colour green
 const int yellowTone = 252;     // The tone in hertz of the LED/button 0 default colour yellow
 const int blueTone = 415;       // The tone in hertz of the LED/button 0 default colour blue    
 
-const byte digits[] = { B11111100, B01100000, B11011010, B11110010, B01100110, B10110110, B10111110, B11100000, B11111110, B11110110 }; 
+const byte digits[] = { B01111110, B00110000, B01101101, B01111001, B00110011, B01011011, B01011111, B01110000, B01111111, B01111011 }; 
 
 unsigned long flashPreviousMillis = 0;
 long flashInterval = 1000;

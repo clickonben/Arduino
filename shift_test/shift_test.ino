@@ -19,7 +19,7 @@ struct Letter
   char letter; 
 };
 
-Letter message[] = { { Blue, 'H' }, 
+Letter message[] = { { Green, 'H' }, 
                      { Red, 'E' }, 
                      { Blue, 'L' }, 
                      { Red, 'L' }, 
@@ -282,30 +282,52 @@ void setup()
 
 void loop() 
 {  
-  for(int i = 0; i < len; i++)
+  for(byte letterId = 0; letterId < len; letterId++)
   { 
-    for(int a = 0; a < 7; a++)
-    {
-      byte column = B00000001;   
+    for(byte offSet = 0; offSet < 7; offSet++)
+    {        
       while(!intervalPassed())
       {
-        for(int j = 0; j < 8; j++)        
-        { 
-          byte currentLetter = font[message[i].letter - 65][j] << a;
-          byte nextLetter =  (i+1 < len ? font[message[i+1].letter - 65][j] : font[message[0].letter - 65][j]) >> 7-a ;
-          byte row = currentLetter | nextLetter;          
-          digitalWrite(latchPin, LOW); 
-          shiftOut(dataPin, clockPin, LSBFIRST, 0);
-          shiftOut(dataPin, clockPin, MSBFIRST, tempState ? row : 0);     
-          shiftOut(dataPin, clockPin, LSBFIRST, column << j);
-          shiftOut(dataPin, clockPin, LSBFIRST, !tempState? row : 0);           
-          //  
-          digitalWrite(latchPin, HIGH); 
-        }     
+        Letter currentLetter = message[letterId];
+        Letter nextLetter = letterId+1 < len ? message[letterId+1] : message[0]; 
+        shiftLetter(currentLetter, nextLetter, offSet);
       }
     }
   }
   tempState = !tempState;  
+}
+
+void shiftLetter(Letter currentLetter, Letter nextLetter, byte offSet)
+{
+  byte row = B00000001; 
+  for(byte rowNo = 0; rowNo < 8; rowNo++)        
+  {                       
+    digitalWrite(latchPin, LOW);
+    shiftRow(currentLetter, nextLetter, Green, offSet, rowNo);
+    shiftRow(currentLetter, nextLetter, Blue, offSet, rowNo);     
+    shiftOut(dataPin, clockPin, LSBFIRST, row << rowNo);
+    shiftRow(currentLetter, nextLetter, Red, offSet, rowNo); 
+    digitalWrite(latchPin, HIGH); 
+  }  
+}
+
+void shiftRow(Letter currentLetter, Letter nextLetter, Colour colour, byte offSet, byte rowNo)
+{
+  byte currentLetterChar = font[currentLetter.letter - 65][rowNo] << offSet;
+  byte nextLetterChar = font[nextLetter.letter - 65][rowNo]>> 7-offSet ; 
+
+  if(currentLetter.colour == colour)
+  {
+     shiftOut(dataPin, clockPin, LSBFIRST, currentLetterChar); 
+  }
+  else if (nextLetter.colour == colour)
+  {
+    shiftOut(dataPin, clockPin, LSBFIRST, nextLetterChar);
+  }
+  else
+  {
+    shiftOut(dataPin, clockPin, LSBFIRST, 0);
+  }
 }
 
 bool intervalPassed()
